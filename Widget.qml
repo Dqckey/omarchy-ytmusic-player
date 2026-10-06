@@ -284,6 +284,10 @@ Panel {
   // action and shows a card under the bar icon, like the volume one: cover,
   // ▶ / ⏸ / ⏭ / ⏮ and the song, updating as soon as the new song is playing.
   property bool trackCard: false
+  // How long the song card stays fully visible, and how long it takes to fade
+  // (settings.json music.cardStay / music.cardFade, in seconds).
+  readonly property real cardStaySeconds: prefs.music && prefs.music.cardStay > 0 ? Math.min(6, prefs.music.cardStay) : 1.8
+  readonly property real cardFadeSeconds: prefs.music && prefs.music.cardFade > 0 ? Math.min(2, prefs.music.cardFade) : 0.46
   property string trackCardAction: ""
   function mediaKey(action) {
     if (action === "toggle") root.togglePlay()
@@ -360,14 +364,14 @@ Panel {
   }
   Timer {
     id: trackCardTimer
-    interval: 1800
+    interval: Math.round(root.cardStaySeconds * 1000)
     onTriggered: trackCardFade.restart()
   }
   // Omarchy's pop-up card fades in a fixed 0.14 s; fading the contents first
   // (0.46 s) makes the whole fade about 0.6 s and softer.
   SequentialAnimation {
     id: trackCardFade
-    NumberAnimation { target: trackRow; property: "opacity"; to: 0; duration: 460; easing.type: Easing.InOutQuad }
+    NumberAnimation { target: trackRow; property: "opacity"; to: 0; duration: Math.round(root.cardFadeSeconds * 1000); easing.type: Easing.InOutQuad }
     ScriptAction { script: root.trackCard = false }
   }
   onTrackCardChanged: if (trackCard) { trackCardFade.stop(); trackRow.opacity = 1 }
@@ -1434,6 +1438,65 @@ Panel {
               checked: root.pauseForOtherAudio
               foreground: root.fg
               onToggled: root.setMusicPref("pauseForOtherAudio", !root.pauseForOtherAudio)
+            }
+          }
+
+          Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
+
+          // Song card timing (media keys / skip / pause card).
+          Text {
+            width: parent.width
+            text: "Song card"
+            color: root.fg
+            font.family: root.font
+            font.pixelSize: Style.font.bodySmall
+          }
+          Repeater {
+            model: [
+              { key: "cardStay", label: "Stays for", min: 0.5, max: 6, value: root.cardStaySeconds },
+              { key: "cardFade", label: "Fade", min: 0.1, max: 2, value: root.cardFadeSeconds }
+            ]
+            Item {
+              required property var modelData
+              width: settingsCardColumn.width
+              height: Style.space(22)
+              Text {
+                id: cardTimeLabel
+                anchors.left: parent.left
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(64)
+                text: modelData.label
+                color: root.fg
+                opacity: 0.7
+                font.family: root.font
+                font.pixelSize: Style.font.caption
+              }
+              PanelSlider {
+                id: cardTimeSlider
+                bar: root.bar
+                anchors.left: cardTimeLabel.right
+                anchors.right: cardTimeValue.left
+                anchors.rightMargin: Style.space(8)
+                anchors.verticalCenter: parent.verticalCenter
+                height: Style.space(18)
+                minimum: modelData.min
+                maximum: modelData.max
+                step: 0.1
+                value: modelData.value
+                onReleased: function(v) { root.setMusicPref(modelData.key, Math.round(v * 10) / 10) }
+              }
+              Text {
+                id: cardTimeValue
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                width: Style.space(44)
+                horizontalAlignment: Text.AlignRight
+                text: (cardTimeSlider.dragging ? cardTimeSlider.liveValue : modelData.value).toFixed(1) + " s"
+                color: root.fg
+                opacity: 0.6
+                font.family: root.font
+                font.pixelSize: Style.font.caption
+              }
             }
           }
 

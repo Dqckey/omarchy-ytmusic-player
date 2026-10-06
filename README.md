@@ -103,7 +103,8 @@ o.bind("XF86AudioPrev", "Previous song", "omarchy-shell -q ytmusic-player-media 
 ## Settings
 
 The gear in the player's top-right corner: pause music when other audio
-starts, equalizer, sleep timer, song-change card, progress ring, and which
+starts, how long the song card stays and fades, equalizer, sleep timer,
+song-change card, progress ring, and which
 sections an artist page shows. Settings live in
 `~/.config/ytmusic-player/settings.json`; pins and hidden items next to it.
 
