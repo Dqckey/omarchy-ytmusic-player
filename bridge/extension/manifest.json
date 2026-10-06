@@ -1,0 +1,48 @@
+{
+  "manifest_version": 3,
+  "name": "YouTube Music Player bridge (Omarchy)",
+  "version": "1.0.0",
+  "description": "Connects the Omarchy bar's YouTube Music player to music.youtube.com: queue, likes, search, library, lyrics and playback controls.",
+  "key": "MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAxLrt1b9nmUDCgSOfCDSm1JpYAcZnm88pG2RpfVha+ZdvfewAkW+gXO168/RmrFq+GzbJ/ba5iowhgVTb2dnhqtIAI9E62CHRt4b9CNYj5ZHrT42eL4TXYKjgxJ1ChSXa0BeBB8mTyJYTH7GIE+Jn4Elwq8QXFdIieiIJs4sjRkaUIbryp1iR0PE6RoQq0XleZlUQkD87jH/hVFXQi1oSeYD1wiXAsI+sAZWlUYltyxCBFhMYuR7Lagfai46rA5yf8mgOqUIyO9f59WWmUM4FpMS8chg8IeukAIPDFJ8ia3DK/jBh3oXcciqlfUVx01+5mojDiGqf8skgBvMMp9VbtQIDAQAB",
+  "permissions": [
+    "nativeMessaging",
+    "scripting"
+  ],
+  "background": {
+    "service_worker": "background.js"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "page.js"
+      ],
+      "run_at": "document_idle",
+      "world": "MAIN"
+    },
+    {
+      "matches": [
+        "https://music.youtube.com/*"
+      ],
+      "js": [
+        "content.js"
+      ],
+      "run_at": "document_idle"
+    },
+    {
+      "matches": [
+        "https://www.youtube.com/*"
+      ],
+      "js": [
+        "other.js"
+      ],
+      "run_at": "document_idle",
+      "all_frames": false
+    }
+  ],
+  "host_permissions": [
+    "https://music.youtube.com/*"
+  ]
+}

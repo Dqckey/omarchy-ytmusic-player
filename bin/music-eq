@@ -1,0 +1,131 @@
+#!/usr/bin/env python3
+"""Music EQ : bass / mid / treble for Chromium's sound (YouTube Music).
+
+  music-eq apply            set the bands from settings and route Chromium through
+                            the EQ (or back to the normal output if it's off)
+  music-eq set BAND DB      BAND = bass | mid | treble, DB = -12 … 12; saves + applies
+  music-eq status           print the settings and whether Chromium is routed
+
+The EQ itself is a PipeWire filter-chain ("Music EQ", node ytmusic_player_eq),
+from ~/.config/pipewire/filter-chain.conf.d/ytmusic-player-eq.conf (installed by setup.sh --eq), run by
+filter-chain.service. Settings: ~/.config/ytmusic-player/settings.json
+"music": {"eq": {"enabled": true, "bass": 0, "mid": 0, "treble": 0}}.
+Moving a stream once is enough: WirePlumber remembers it for Chromium.
+"""
+import json
+import os
+import subprocess
+import sys
+
+SETTINGS = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "ytmusic-player", "settings.json")
+SINK = "ytmusic_player_eq"
+BANDS = ("bass", "mid", "treble")
+
+
+def load():
+    try:
+        with open(SETTINGS) as f:
+            return json.load(f)
+    except (OSError, ValueError):
+        return {}
+
+
+def eq_settings(prefs):
+    eq = (prefs.get("music") or {}).get("eq") or {}
+    out = {"enabled": eq.get("enabled", True)}
+    for b in BANDS:
+        try:
+            out[b] = max(-12.0, min(12.0, float(eq.get(b, 0))))
+        except (TypeError, ValueError):
+            out[b] = 0.0
+    return out
+
+
+def save(prefs, eq):
+    prefs.setdefault("music", {})["eq"] = eq
+    tmp = SETTINGS + ".tmp"
+    with open(tmp, "w") as f:
+        json.dump(prefs, f, indent=2)
+        f.write("\n")
+    os.replace(tmp, SETTINGS)
+
+
+def run(*cmd):
+    return subprocess.run(cmd, capture_output=True, text=True)
+
+
+def node_id(name):
+    try:
+        objs = json.loads(run("pw-dump").stdout or "[]")
+    except ValueError:
+        return None
+    for o in objs:
+        props = (o.get("info") or {}).get("props") or {}
+        if props.get("node.name") == name:
+            return o.get("id")
+    return None
+
+
+def set_gains(eq, enabled):
+    nid = node_id(SINK)
+    if nid is None:
+        return False
+    params = " ".join(f'"{b}:Gain" {eq[b] if enabled else 0.0:.1f}' for b in BANDS)
+    run("pw-cli", "set-param", str(nid), "Props", "{ params = [ " + params + " ] }")
+    return True
+
+
+def chromium_inputs():
+    """Chromium's playback streams (pipewire-pulse sink-inputs): [(id, sink_name)]."""
+    try:
+        data = json.loads(run("pactl", "-f", "json", "list", "sink-inputs").stdout or "[]")
+        sinks = {s["index"]: s["name"] for s in json.loads(run("pactl", "-f", "json", "list", "sinks").stdout or "[]")}
+    except ValueError:
+        return []
+    out = []
+    for si in data:
+        app = (si.get("properties") or {}).get("application.name", "")
+        if "chrom" in app.lower():
+            out.append((si["index"], sinks.get(si.get("sink"), "")))
+    return out
+
+
+def route(enabled):
+    target = SINK if enabled and node_id(SINK) is not None else "@DEFAULT_SINK@"
+    for idx, sink in chromium_inputs():
+        if enabled and sink == SINK:
+            continue
+        if not enabled and sink != SINK:
+            continue
+        run("pactl", "move-sink-input", str(idx), target)
+
+
+def main():
+    args = sys.argv[1:]
+    cmd = args[0] if args else "status"
+    prefs = load()
+    eq = eq_settings(prefs)
+    if cmd == "set" and len(args) == 3 and args[1] in BANDS:
+        try:
+            eq[args[1]] = max(-12.0, min(12.0, float(args[2])))
+        except ValueError:
+            print(__doc__)
+            sys.exit(2)
+        save(prefs, eq)
+        cmd = "apply"
+    elif cmd in ("on", "off"):
+        eq["enabled"] = cmd == "on"
+        save(prefs, eq)
+        cmd = "apply"
+    if cmd == "apply":
+        set_gains(eq, eq["enabled"])
+        route(eq["enabled"])
+    elif cmd == "status":
+        print(json.dumps({"eq": eq, "sink": node_id(SINK), "chromium": chromium_inputs()}))
+    else:
+        print(__doc__)
+        sys.exit(2)
+
+
+if __name__ == "__main__":
+    main()

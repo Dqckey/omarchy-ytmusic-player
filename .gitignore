@@ -1,0 +1,4 @@
+# Never publish an extension private key.
+*.pem
+*.key
+__pycache__/

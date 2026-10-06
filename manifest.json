@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "ytmusic-player",
+  "name": "YouTube Music Player",
+  "version": "1.0.0",
+  "author": "ytmusic-player contributors",
+  "description": "A YouTube Music mini player for the Omarchy bar: song, progress, controls, queue, search, library, lyrics and more (via a small Chromium extension).",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Widget.qml"
+  },
+  "barWidget": {
+    "displayName": "YouTube Music",
+    "description": "YouTube Music mini player: click for the player, right-click to play / pause, scroll to skip",
+    "category": "Media",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}

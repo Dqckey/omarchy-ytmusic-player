@@ -1,0 +1,27 @@
+#!/bin/bash
+# Send a YouTube Music keyboard shortcut to its window without focusing it .
+# Used by the bar's mini player (the ytmusic-player bar widget) for like / dislike, which
+# the system media controls (MPRIS) don't offer.
+#   ytmusic-key like      YouTube Music's "+" shortcut
+#   ytmusic-key dislike   YouTube Music's "_" shortcut
+#   ytmusic-key shuffle   YouTube Music's "s" shortcut
+#   ytmusic-key next      YouTube Music's "j" shortcut (also SUPER+SHIFT+RIGHT)
+#   ytmusic-key previous  YouTube Music's "k" shortcut (also SUPER+SHIFT+LEFT)
+case "$1" in
+  like)    mods="SHIFT"; key="equal" ;;
+  dislike) mods="SHIFT"; key="minus" ;;
+  shuffle) mods="";      key="s" ;;
+  next)     mods="";      key="j" ;;
+  previous) mods="";      key="k" ;;
+  *) echo "usage: ytmusic-key like|dislike|shuffle|next|previous" >&2; exit 1 ;;
+esac
+
+address=$(hyprctl clients -j | jq -r '[.[] | select(.class | test("music\\.youtube\\.com"))][0].address // empty')
+[[ -z $address ]] && exit 1
+
+send() {
+  hyprctl dispatch "hl.dsp.send_key_state({ mods = \"$mods\", key = \"$key\", state = \"$1\", window = \"address:$address\" })" >/dev/null
+}
+send down
+sleep 0.05
+send up

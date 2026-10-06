@@ -1,0 +1,129 @@
+#!/usr/bin/env python3
+"""Send a command to YouTube Music through the bar bridge .
+
+  ytmusic-cmd like | dislike | shuffle | inspect | reload
+  ytmusic-cmd resume | pause | toggle | next | previous
+  ytmusic-cmd seek SECONDS
+  ytmusic-cmd search QUERY...          (or: search --chip N QUERY... / search --filter LABEL QUERY...)
+  ytmusic-cmd artist search|library|artist INDEX
+  ytmusic-cmd artistplay shuffle|radio
+  ytmusic-cmd artistsongs              (the open artist's full song list)
+  ytmusic-cmd artistsongsplay play|shuffle
+  ytmusic-cmd library                  (playlists + saved albums)
+  ytmusic-cmd speeddial                (the Speed dial shelf from YouTube Music's home)
+  ytmusic-cmd repeat | radio | lyrics | saveto   (current song)
+  ytmusic-cmd saveadd PLAYLIST_ID [TITLE...]
+  ytmusic-cmd pick search|library INDEX [play|next|queue]
+  ytmusic-cmd pickid playlist|song ID [play|next|queue] [TITLE...]
+  ytmusic-cmd volume PERCENT     (YouTube Music's own player volume, 0-100)
+  ytmusic-cmd play INDEX [TITLE [ID]]
+  ytmusic-cmd remove INDEX [TITLE [ID]]
+  ytmusic-cmd move INDEX TO [TITLE [ID]]
+
+Writes one JSON line to the FIFO the bridge host listens on
+(<state>/ytmusic-player/cmd). Exits 1 if the bridge isn't running.
+See bridge/host.py in this plugin.
+"""
+import json
+import os
+import stat
+import sys
+
+FIFO = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "ytmusic-player", "cmd")
+
+args = sys.argv[1:]
+if not args or args[0] not in ("like", "dislike", "shuffle", "inspect", "reload", "play", "remove", "move",
+                               "resume", "pause", "toggle", "next", "previous", "seek", "volume",
+                               "search", "library", "pick", "pickid", "artist", "artistplay", "artistsongs",
+                               "artistsongsplay", "speeddial", "repeat", "radio", "lyrics", "saveto", "saveadd"):
+    print(__doc__)
+    sys.exit(2)
+msg = {"cmd": args[0]}
+if args[0] == "search":
+    rest = args[1:]
+    if len(rest) >= 2 and rest[0] == "--chip" and rest[1].isdigit():
+        msg["chip"] = int(rest[1])
+        rest = rest[2:]
+    elif len(rest) >= 2 and rest[0] == "--filter":
+        msg["chipLabel"] = rest[1]
+        rest = rest[2:]
+    msg["q"] = " ".join(rest)
+if args[0] == "artist":
+    if len(args) < 3 or args[1] not in ("search", "library", "artist", "speeddial") or not args[2].isdigit():
+        print(__doc__)
+        sys.exit(2)
+    msg["list"] = args[1]
+    msg["index"] = int(args[2])
+if args[0] == "saveadd":
+    if len(args) < 2:
+        print(__doc__)
+        sys.exit(2)
+    msg["playlistId"] = args[1]
+    if len(args) > 2:
+        msg["title"] = " ".join(args[2:])
+if args[0] == "artistsongsplay":
+    if len(args) < 2 or args[1] not in ("play", "shuffle"):
+        print(__doc__)
+        sys.exit(2)
+    msg["mode"] = args[1]
+if args[0] == "artistplay":
+    if len(args) < 2 or args[1] not in ("shuffle", "radio"):
+        print(__doc__)
+        sys.exit(2)
+    msg["mode"] = args[1]
+if args[0] == "pickid":
+    if len(args) < 3 or args[1] not in ("playlist", "song"):
+        print(__doc__)
+        sys.exit(2)
+    msg["playlistId" if args[1] == "playlist" else "videoId"] = args[2]
+    msg["action"] = args[3] if len(args) > 3 and args[3] in ("play", "next", "queue") else "play"
+    if len(args) > 4:
+        msg["title"] = " ".join(args[4:])
+if args[0] == "pick":
+    if len(args) < 3 or args[1] not in ("search", "library", "artist", "artistsongs", "speeddial") or not args[2].isdigit():
+        print(__doc__)
+        sys.exit(2)
+    msg["list"] = args[1]
+    msg["index"] = int(args[2])
+    if len(args) > 3:
+        if args[3] not in ("play", "next", "queue"):
+            print(__doc__)
+            sys.exit(2)
+        msg["action"] = args[3]
+if args[0] == "seek":
+    try:
+        msg["to"] = float(args[1])
+    except (IndexError, ValueError):
+        print(__doc__)
+        sys.exit(2)
+if args[0] == "volume":
+    if len(args) < 2 or not args[1].isdigit() or int(args[1]) > 100:
+        print(__doc__)
+        sys.exit(2)
+    msg["to"] = int(args[1])
+if args[0] == "move":
+    # move INDEX TO [TITLE [ID]] -> same shape as play/remove plus "to"
+    if len(args) < 3 or not args[1].isdigit() or not args[2].isdigit():
+        print(__doc__)
+        sys.exit(2)
+    msg["to"] = int(args[2])
+    args = [args[0], args[1]] + args[3:]
+if args[0] in ("play", "remove", "move"):
+    if len(args) < 2 or not args[1].isdigit():
+        print(__doc__)
+        sys.exit(2)
+    msg["index"] = int(args[1])
+    if len(args) > 2:
+        msg["title"] = args[2]
+    if len(args) > 3 and args[3]:
+        msg["id"] = args[3]
+
+try:
+    if not stat.S_ISFIFO(os.stat(FIFO).st_mode):
+        sys.exit(1)
+    # Non-blocking: fails at once if the bridge (the reader) isn't running.
+    fd = os.open(FIFO, os.O_WRONLY | os.O_NONBLOCK)
+except OSError:
+    sys.exit(1)
+os.write(fd, (json.dumps(msg) + "\n").encode())
+os.close(fd)
