@@ -1,5 +1,7 @@
 # YouTube Music Player for Omarchy
 
+![The player open from the bar](preview.png)
+
 A YouTube Music mini player for the [Omarchy](https://omarchy.org) bar. Click
 the play-circle on the bar for a small player: the cover, song and artist,
 a progress bar you can drag, play / pause / skip, like / dislike, volume,
