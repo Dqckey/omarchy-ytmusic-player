@@ -295,7 +295,8 @@ Panel {
     else if (action === "previous") root.prevTrack()
     else return
     root.trackCardAction = action
-    if (root.opened) return
+    // The song card is one setting: off = no card at all, keys included.
+    if (root.opened || !root.notifySongs) return
     root.volumeCard = false
     if (action === "toggle") { root.showTrackCard(); return }
     // Next / previous: wait until the new song (and its cover) has arrived, so
@@ -1564,7 +1565,7 @@ Panel {
 
           // Song-change card (off by default), its timing, and the bar icon's progress ring.
           Repeater {
-            model: [{ key: "notifySongChange", label: "Show the song card when the song changes", on: root.notifySongs }]
+            model: [{ key: "notifySongChange", label: "Show the song card (play / pause, skip and song changes)", on: root.notifySongs }]
             Item {
               required property var modelData
               width: settingsCardColumn.width
@@ -1591,8 +1592,8 @@ Panel {
               }
             }
           }
-          // How long the song card stays and how long it fades (shown while the song
-          // card is on; also used for the play / pause / next / previous key card).
+          // How long the song card stays and how long it fades (shown while the
+          // song card is on).
           Column {
             width: parent.width
             spacing: Style.space(6)
