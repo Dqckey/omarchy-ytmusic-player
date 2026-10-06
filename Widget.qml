@@ -1443,65 +1443,6 @@ Panel {
 
           Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
 
-          // Song card timing (media keys / skip / pause card).
-          Text {
-            width: parent.width
-            text: "Song card"
-            color: root.fg
-            font.family: root.font
-            font.pixelSize: Style.font.bodySmall
-          }
-          Repeater {
-            model: [
-              { key: "cardStay", label: "Stays for", min: 0.5, max: 6, value: root.cardStaySeconds },
-              { key: "cardFade", label: "Fade", min: 0.1, max: 2, value: root.cardFadeSeconds }
-            ]
-            Item {
-              required property var modelData
-              width: settingsCardColumn.width
-              height: Style.space(22)
-              Text {
-                id: cardTimeLabel
-                anchors.left: parent.left
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(64)
-                text: modelData.label
-                color: root.fg
-                opacity: 0.7
-                font.family: root.font
-                font.pixelSize: Style.font.caption
-              }
-              PanelSlider {
-                id: cardTimeSlider
-                bar: root.bar
-                anchors.left: cardTimeLabel.right
-                anchors.right: cardTimeValue.left
-                anchors.rightMargin: Style.space(8)
-                anchors.verticalCenter: parent.verticalCenter
-                height: Style.space(18)
-                minimum: modelData.min
-                maximum: modelData.max
-                step: 0.1
-                value: modelData.value
-                onReleased: function(v) { root.setMusicPref(modelData.key, Math.round(v * 10) / 10) }
-              }
-              Text {
-                id: cardTimeValue
-                anchors.right: parent.right
-                anchors.verticalCenter: parent.verticalCenter
-                width: Style.space(44)
-                horizontalAlignment: Text.AlignRight
-                text: (cardTimeSlider.dragging ? cardTimeSlider.liveValue : modelData.value).toFixed(1) + " s"
-                color: root.fg
-                opacity: 0.6
-                font.family: root.font
-                font.pixelSize: Style.font.caption
-              }
-            }
-          }
-
-          Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
-
           // Equalizer: on/off + bass / mid / treble.
           Item {
             width: parent.width
@@ -1621,12 +1562,92 @@ Panel {
 
           Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
 
-          // Song-change notification (off by default) and the bar icon's progress ring.
+          // Song-change card (off by default), its timing, and the bar icon's progress ring.
           Repeater {
-            model: [
-              { key: "notifySongChange", label: "Show the song card when the song changes", on: root.notifySongs },
-              { key: "progressRing", label: "Progress ring on the bar icon", on: root.progressRing }
-            ]
+            model: [{ key: "notifySongChange", label: "Show the song card when the song changes", on: root.notifySongs }]
+            Item {
+              required property var modelData
+              width: settingsCardColumn.width
+              height: Math.max(optLabel.implicitHeight, optSwitch.implicitHeight)
+              Text {
+                id: optLabel
+                anchors.left: parent.left
+                anchors.right: optSwitch.left
+                anchors.rightMargin: Style.space(10)
+                anchors.verticalCenter: parent.verticalCenter
+                text: modelData.label
+                wrapMode: Text.Wrap
+                color: root.fg
+                font.family: root.font
+                font.pixelSize: Style.font.bodySmall
+              }
+              ToggleSwitch {
+                id: optSwitch
+                anchors.right: parent.right
+                anchors.verticalCenter: parent.verticalCenter
+                checked: modelData.on
+                foreground: root.fg
+                onToggled: root.setMusicPref(modelData.key, !modelData.on)
+              }
+            }
+          }
+          // How long the song card stays and how long it fades (shown while the song
+          // card is on; also used for the play / pause / next / previous key card).
+          Column {
+            width: parent.width
+            spacing: Style.space(6)
+            visible: root.notifySongs
+            Repeater {
+              model: [
+                { key: "cardStay", label: "Stays for", min: 0.5, max: 6, value: root.cardStaySeconds },
+                { key: "cardFade", label: "Fade", min: 0.1, max: 2, value: root.cardFadeSeconds }
+              ]
+              Item {
+                required property var modelData
+                width: settingsCardColumn.width
+                height: Style.space(22)
+                Text {
+                  id: cardTimeLabel
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(64)
+                  text: modelData.label
+                  color: root.fg
+                  opacity: 0.7
+                  font.family: root.font
+                  font.pixelSize: Style.font.caption
+                }
+                PanelSlider {
+                  id: cardTimeSlider
+                  bar: root.bar
+                  anchors.left: cardTimeLabel.right
+                  anchors.right: cardTimeValue.left
+                  anchors.rightMargin: Style.space(8)
+                  anchors.verticalCenter: parent.verticalCenter
+                  height: Style.space(18)
+                  minimum: modelData.min
+                  maximum: modelData.max
+                  step: 0.1
+                  value: modelData.value
+                  onReleased: function(v) { root.setMusicPref(modelData.key, Math.round(v * 10) / 10) }
+                }
+                Text {
+                  id: cardTimeValue
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(44)
+                  horizontalAlignment: Text.AlignRight
+                  text: (cardTimeSlider.dragging ? cardTimeSlider.liveValue : modelData.value).toFixed(1) + " s"
+                  color: root.fg
+                  opacity: 0.6
+                  font.family: root.font
+                  font.pixelSize: Style.font.caption
+                }
+              }
+            }
+          }
+          Repeater {
+            model: [{ key: "progressRing", label: "Progress ring on the bar icon", on: root.progressRing }]
             Item {
               required property var modelData
               width: settingsCardColumn.width
