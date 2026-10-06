@@ -30,8 +30,8 @@ import qs.Ui
 // bin/ytmusic-cmd.
 Panel {
   id: root
-  moduleName: "ytmusic-player"
-  ipcTarget: "ytmusic-player"
+  moduleName: "dqckey.ytmusic-player"
+  ipcTarget: "dqckey.ytmusic-player"
   implicitWidth: button.implicitWidth
   implicitHeight: button.implicitHeight
 
@@ -405,7 +405,7 @@ Panel {
     notifiedHealth = healthKey
     Quickshell.execDetached(["notify-send", "-a", "YouTube Music", "-i", "dialog-warning",
       "YouTube Music changed its page",
-      "Not working in the bar player: " + healthKey + ". Play, pause and volume still work. Check for an update to the ytmusic-player plugin (omarchy plugin update ytmusic-player)."])
+      "Not working in the bar player: " + healthKey + ". Play, pause and volume still work. Check for an update to the YouTube Music Player plugin (omarchy plugin update dqckey.ytmusic-player)."])
   }
   // Bottom half shows one thing at a time: "queue", "search", "library" or "".
   property string bottomView: ""

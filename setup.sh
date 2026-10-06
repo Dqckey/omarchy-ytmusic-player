@@ -43,7 +43,7 @@ uninstall() {
   fi
   say "Removed the bridge helper registration."
   say "Remove the browser extension yourself in chrome://extensions, and the plugin with:"
-  say "  omarchy plugin remove ytmusic-player"
+  say "  omarchy plugin remove dqckey.ytmusic-player"
   say "Settings / state stay in $CONFIG_HOME/ytmusic-player and $STATE_DIR (delete them if you like)."
 }
 
@@ -103,7 +103,7 @@ Optional keyboard shortcuts: add these to ~/.config/hypr/bindings.lua
 (the hl.unbind lines free keys Omarchy already uses):
 
   hl.unbind("SUPER + SHIFT + M")      -- was: Spotify
-  o.bind("SUPER + SHIFT + M", "Music player", "omarchy-shell shell toggle ytmusic-player")
+  o.bind("SUPER + SHIFT + M", "Music player", "omarchy-shell shell toggle dqckey.ytmusic-player")
   o.bind("SUPER + CTRL + M", "Play / pause music", "omarchy-shell -q ytmusic-player-media toggle")
   hl.unbind("SUPER + CTRL + RIGHT")   -- was: next window in a group
   hl.unbind("SUPER + CTRL + LEFT")    -- was: previous window in a group

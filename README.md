@@ -51,7 +51,7 @@ shuffle and repeat, plus tabs for your **queue**, **search**, **library**,
 ## Install
 
 ```sh
-omarchy plugin add https://github.com/<you>/omarchy-ytmusic-player.git --enable
+omarchy plugin add https://github.com/Dqckey/omarchy-ytmusic-player.git --enable
 ```
 
 Without the next step the player already shows the song and handles play /
@@ -59,14 +59,14 @@ pause / skip through your system's media controls. Everything else needs the
 **bridge**:
 
 ```sh
-~/.config/omarchy/plugins/ytmusic-player/setup.sh          # or: setup.sh --eq
+~/.config/omarchy/plugins/dqckey.ytmusic-player/setup.sh          # or: setup.sh --eq
 ```
 
 then, once:
 
 1. In your browser open `chrome://extensions`, turn on **Developer mode**,
    click **Load unpacked** and choose
-   `~/.config/omarchy/plugins/ytmusic-player/bridge/extension`.
+   `~/.config/omarchy/plugins/dqckey.ytmusic-player/bridge/extension`.
 2. Reload your YouTube Music tab / window.
 
 `setup.sh` registers a small helper (a Chrome "native messaging host") so the
@@ -80,7 +80,7 @@ uses by default):
 
 ```lua
 hl.unbind("SUPER + SHIFT + M")      -- was: Spotify
-o.bind("SUPER + SHIFT + M", "Music player", "omarchy-shell shell toggle ytmusic-player")
+o.bind("SUPER + SHIFT + M", "Music player", "omarchy-shell shell toggle dqckey.ytmusic-player")
 o.bind("SUPER + CTRL + M", "Play / pause music", "omarchy-shell -q ytmusic-player-media toggle")
 hl.unbind("SUPER + CTRL + RIGHT")   -- was: next window in a group
 hl.unbind("SUPER + CTRL + LEFT")    -- was: previous window in a group
@@ -125,8 +125,8 @@ helper only accepts that one extension.
 ## Uninstall
 
 ```sh
-~/.config/omarchy/plugins/ytmusic-player/setup.sh --uninstall
-omarchy plugin remove ytmusic-player
+~/.config/omarchy/plugins/dqckey.ytmusic-player/setup.sh --uninstall
+omarchy plugin remove dqckey.ytmusic-player
 ```
 
 and remove the extension in `chrome://extensions`.

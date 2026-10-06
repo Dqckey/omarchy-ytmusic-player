@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
-  "id": "ytmusic-player",
+  "id": "dqckey.ytmusic-player",
   "name": "YouTube Music Player",
   "version": "1.0.0",
-  "author": "ytmusic-player contributors",
+  "author": "Dqckey",
   "description": "A YouTube Music mini player for the Omarchy bar: song, progress, controls, queue, search, library, lyrics and more (via a small Chromium extension).",
   "kinds": [
     "bar-widget"
