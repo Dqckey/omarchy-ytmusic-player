@@ -756,7 +756,8 @@ Panel {
   readonly property var upNext: currentQueueIndex >= 0 && currentQueueIndex + 1 < queue.length ? queue[currentQueueIndex + 1] : null
 
   // ---- Song-change notification (settings card, off by default).
-  readonly property bool notifySongs: !!(prefs.music && prefs.music.notifySongChange)
+  // Song card: on unless switched off (settings.json music.notifySongChange).
+  readonly property bool notifySongs: !(prefs.music && prefs.music.notifySongChange === false)
   readonly property bool progressRing: !(prefs.music && prefs.music.progressRing === false)
   property string lastSeenTitle: ""
   property string lastSeenArt: ""
