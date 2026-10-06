@@ -1100,11 +1100,24 @@ Panel {
     }
   }
 
+  // The song / volume cards are passive overlays: they must not close whatever
+  // bar pop-up is open (e.g. a settings panel). The bar closes the previous
+  // pop-up whenever a new one "requests" to be active, so the cards get this
+  // stand-in bar that passes through the position (all PopupCard needs for
+  // placement) and ignores those requests.
+  QtObject {
+    id: passiveBar
+    readonly property string position: root.bar && root.bar.position ? root.bar.position : "top"
+    property var activePopout: null
+    function requestPopout(owner) {}
+    function releasePopout(owner) {}
+  }
+
   // Track card for the media hotkeys (see mediaKey).
   PopupCard {
     id: trackPopup
     anchorItem: button
-    bar: root.bar
+    bar: passiveBar
     triggerMode: "hover"
     open: root.trackCard && !root.opened
     contentWidth: trackRow.implicitWidth + trackPopup.padding * 2 + Style.space(4)
@@ -1184,7 +1197,7 @@ Panel {
   PopupCard {
     id: volumePopup
     anchorItem: button
-    bar: root.bar
+    bar: passiveBar
     triggerMode: "hover"
     open: root.volumeCard
     contentWidth: popupRow.implicitWidth + volumePopup.padding * 2 + Style.space(4)
