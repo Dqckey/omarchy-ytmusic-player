@@ -25,6 +25,7 @@ import threading
 import time
 
 STATE_DIR = os.path.join(os.environ.get("XDG_STATE_HOME") or os.path.expanduser("~/.local/state"), "ytmusic-player")
+CONFIG_DIR = os.path.join(os.environ.get("XDG_CONFIG_HOME") or os.path.expanduser("~/.config"), "ytmusic-player")
 STATE = os.path.join(STATE_DIR, "state.json")
 INSPECT = os.path.join(STATE_DIR, "inspect.json")
 FIFO = os.path.join(STATE_DIR, "cmd")
@@ -191,14 +192,16 @@ def read_commands():
 
 
 def make_private():
-    """Only this user can read the state folder (song, queue, searches)."""
+    """Only this user can read the state and config folders (song, queue,
+    searches, history, pins)."""
     os.umask(0o077)
-    os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
-    os.chmod(STATE_DIR, 0o700)
-    for name in os.listdir(STATE_DIR):
-        path = os.path.join(STATE_DIR, name)
-        if os.path.isfile(path) and not os.path.islink(path):
-            os.chmod(path, 0o600)
+    for folder in (STATE_DIR, CONFIG_DIR):
+        os.makedirs(folder, mode=0o700, exist_ok=True)
+        os.chmod(folder, 0o700)
+        for name in os.listdir(folder):
+            path = os.path.join(folder, name)
+            if not os.path.islink(path):
+                os.chmod(path, 0o700 if os.path.isdir(path) else 0o600)
 
 
 def main():

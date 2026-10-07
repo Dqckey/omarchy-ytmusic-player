@@ -117,12 +117,16 @@ sections an artist page shows. Settings live in
 | `Widget.qml` | The bar widget and player (Quickshell / QML). |
 | `bridge/extension/` | Chromium extension. `content.js` / `page.js` run only on `music.youtube.com`: they report the song, queue, like / shuffle / repeat state, and carry out the player's commands (clicking YouTube Music's own buttons or using its own internal requests). `other.js` runs on `youtube.com` only to notice a video starting (for audio focus) and reads nothing else. |
 | `bridge/host.py` | The helper the browser starts for this extension only. It writes the page's state to `~/.local/state/ytmusic-player/` and forwards an allowlisted set of commands from the bar. It never runs anything it receives. |
-| `bin/ytmusic-cmd` | Sends a command to the bridge (`ytmusic-cmd --help`). |
+| `bin/ytmusic-cmd` | Sends a command to the bridge (`ytmusic-cmd --help`). The widget keeps one `ytmusic-cmd --stdin` running and writes commands to it, so search text and song titles never show up in process lists. |
 | `bin/ytmusic-key` | Fallback: sends YouTube Music's keyboard shortcuts to its window when the bridge isn't loaded. |
 | `bin/music-eq` + `eq/` | The optional equalizer (a PipeWire filter-chain). |
 
 The extension uses a fixed ID (its public key is in `manifest.json`), so the
 helper only accepts that one extension.
+
+The settings and state folders (`~/.config/ytmusic-player`,
+`~/.local/state/ytmusic-player`) are kept private to your user (mode 700),
+since they hold your searches, queue, history and pins.
 
 ## Uninstall
 

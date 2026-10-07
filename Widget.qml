@@ -91,6 +91,11 @@ Panel {
   // Signals older than the shell's start are stale; anything newer is new.
   property real otherSeenTs: Date.now() / 1000
 
+  // Settings, pins, hidden items, history and search results: this user only,
+  // even before the bridge (which also enforces this) has ever run.
+  Component.onCompleted: Quickshell.execDetached(["sh", "-c", 'mkdir -p -m 700 -- "$@" && chmod 700 -- "$@"',
+    "sh", root.configDir, root.stateDir])
+
   FileView {
     id: settingsFile
     path: root.configDir + "/settings.json"
@@ -920,8 +925,32 @@ Panel {
     onTriggered: root.now = Date.now()
   }
 
+  // Commands go to one long-running `ytmusic-cmd --stdin` as JSON lines, never
+  // as process arguments: argv is readable by other local users (ps,
+  // /proc/PID/cmdline), and these carry search text and song titles.
   function bridgeCmd(args) {
-    Quickshell.execDetached([root.binDir + "/ytmusic-cmd"].concat(args))
+    var line = JSON.stringify(args.map(String)) + "\n"
+    if (bridgePipe.ready) bridgePipe.write(line)
+    else {
+      bridgePipe.pending.push(line)
+      bridgePipe.running = true
+    }
+  }
+
+  Process {
+    id: bridgePipe
+    property bool ready: false
+    property var pending: []
+    command: [root.binDir + "/ytmusic-cmd", "--stdin"]
+    stdinEnabled: true
+    onStarted: {
+      ready = true
+      var lines = pending
+      pending = []
+      for (var i = 0; i < lines.length; i++) write(lines[i])
+    }
+    // Restarted by the next command if it ever exits.
+    onExited: ready = false
   }
 
   function playQueueItem(index) {

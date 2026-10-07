@@ -71,21 +71,22 @@ command -v python3 >/dev/null || { say "python3 is required"; exit 1; }
 chmod +x "$PLUGIN_DIR/bin/"* "$PLUGIN_DIR/bridge/host.py"
 mkdir -p -m 700 "$STATE_DIR"
 chmod 700 "$STATE_DIR"   # song, queue and searches: this user only
-mkdir -p "$CONFIG_HOME/ytmusic-player"
+mkdir -p -m 700 "$CONFIG_HOME/ytmusic-player"
+chmod 700 "$CONFIG_HOME/ytmusic-player"   # pins, hidden items: this user only
 
 registered=0
 for dir in "${BROWSER_DIRS[@]}"; do
   [[ -d $dir ]] || continue
   mkdir -p "$dir/NativeMessagingHosts"
-  cat > "$dir/NativeMessagingHosts/$HOST_NAME.json" <<JSON
-{
-  "name": "$HOST_NAME",
-  "description": "ytmusic-player bar bridge",
-  "path": "$PLUGIN_DIR/bridge/host.py",
-  "type": "stdio",
-  "allowed_origins": ["chrome-extension://$EXT_ID/"]
-}
-JSON
+  # json.dumps, so an install path with quotes or backslashes can't break the file.
+  python3 - "$dir/NativeMessagingHosts/$HOST_NAME.json" "$HOST_NAME" "$PLUGIN_DIR/bridge/host.py" "$EXT_ID" <<'PY'
+import json, sys
+out, name, path, ext = sys.argv[1:]
+with open(out, "w") as f:
+    json.dump({"name": name, "description": "ytmusic-player bar bridge", "path": path,
+               "type": "stdio", "allowed_origins": ["chrome-extension://%s/" % ext]}, f, indent=2)
+    f.write("\n")
+PY
   say "Registered the bridge helper for $(basename "$dir")."
   registered=1
 done
