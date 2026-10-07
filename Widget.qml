@@ -393,7 +393,10 @@ Panel {
   // ---- Bridge (extension) state; "live" if it reported in the last 10 s.
   property var bridge: ({})
   property real now: Date.now()
-  readonly property bool bridgeOn: bridge.connected === true && bridge.ts > 0 && now - bridge.ts * 1000 < 10000
+  // Paused + hidden, Chromium slows the page's 1 s report to about once a
+  // minute, so allow a longer gap then (a closed tab still reports itself).
+  readonly property bool bridgeOn: bridge.connected === true && bridge.ts > 0
+    && now - bridge.ts * 1000 < (bridge.playing === true ? 10000 : 90000)
   readonly property var queue: bridgeOn && bridge.queue ? bridge.queue : []
   readonly property string rating: bridgeOn && bridge.like
     ? (bridge.like === "LIKE" ? "like" : bridge.like === "DISLIKE" ? "dislike" : "")
@@ -768,13 +771,13 @@ Panel {
   property string lastSeenArt: ""
   onMTitleChanged: {
     var t = root.mTitle
-    if (t === "" || t === root.lastSeenTitle) return
+    // Bridge titles only: a brief fall back to MPRIS and back isn't a new song.
+    if (t === "" || t === root.lastSeenTitle || !root.bridgeOn) return
     var first = root.lastSeenTitle === ""
     var prevTitle = root.lastSeenTitle
     var prevArt = root.lastSeenArt
     root.lastSeenTitle = t
     root.lastSeenArt = root.mArt
-    if (!root.bridgeOn) return
     // History (skip the song already showing when the shell started).
     if (!first) {
       var entry = { title: t, artist: root.mArtist, art: root.mArt, kind: "song", videoId: root.currentVideoId,
