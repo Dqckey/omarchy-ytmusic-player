@@ -155,10 +155,13 @@ def clean_command(raw):
 
 
 def log_command(cmd):
-    """Keep the last 50 forwarded commands (time + command) for debugging."""
+    """Keep the last 50 forwarded commands (time + command) for debugging.
+    Search text and titles are left out (only their length is kept)."""
+    entry = {k: ("<%d chars>" % len(v) if k in ("q", "title") and isinstance(v, str) else v)
+             for k, v in cmd.items()}
     try:
         lines = open(LOG).read().splitlines()[-49:] if os.path.exists(LOG) else []
-        lines.append(time.strftime("%H:%M:%S ") + json.dumps(cmd))
+        lines.append(time.strftime("%H:%M:%S ") + json.dumps(entry))
         with open(LOG, "w") as f:
             f.write("\n".join(lines) + "\n")
     except OSError:
@@ -187,8 +190,19 @@ def read_commands():
                 log_command(cmd)
 
 
+def make_private():
+    """Only this user can read the state folder (song, queue, searches)."""
+    os.umask(0o077)
+    os.makedirs(STATE_DIR, mode=0o700, exist_ok=True)
+    os.chmod(STATE_DIR, 0o700)
+    for name in os.listdir(STATE_DIR):
+        path = os.path.join(STATE_DIR, name)
+        if os.path.isfile(path) and not os.path.islink(path):
+            os.chmod(path, 0o600)
+
+
 def main():
-    os.makedirs(STATE_DIR, exist_ok=True)
+    make_private()
     threading.Thread(target=read_commands, daemon=True).start()
     stdin = sys.stdin.buffer
     while True:

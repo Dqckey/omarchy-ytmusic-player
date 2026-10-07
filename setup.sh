@@ -69,7 +69,9 @@ command -v python3 >/dev/null || { say "python3 is required"; exit 1; }
 [[ -n $EXT_ID ]] || { say "bridge/extension-id.txt is missing"; exit 1; }
 
 chmod +x "$PLUGIN_DIR/bin/"* "$PLUGIN_DIR/bridge/host.py"
-mkdir -p "$STATE_DIR" "$CONFIG_HOME/ytmusic-player"
+mkdir -p -m 700 "$STATE_DIR"
+chmod 700 "$STATE_DIR"   # song, queue and searches: this user only
+mkdir -p "$CONFIG_HOME/ytmusic-player"
 
 registered=0
 for dir in "${BROWSER_DIRS[@]}"; do
