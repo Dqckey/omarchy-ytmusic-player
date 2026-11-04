@@ -48,14 +48,12 @@ Panel {
 
   // Chromium web apps register one MPRIS player per tab, all called "Chromium".
   // YouTube Music's cover art comes from googleusercontent.com (YouTube videos
-  // use ytimg.com), so prefer that one; else whichever Chromium player is playing.
+  // use ytimg.com), so only those count.
   readonly property var player: {
     var players = Mpris.players ? Mpris.players.values : []
     // With YouTube Music open in more than one window, the playing one wins.
     var musicPlaying = null
     var music = null
-    var playing = null
-    var any = null
     for (var i = 0; i < players.length; i++) {
       var p = players[i]
       var name = String(p.identity || p.desktopEntry || "").toLowerCase()
@@ -63,10 +61,11 @@ Panel {
       var isMusic = String(p.trackArtUrl || "").indexOf("googleusercontent.com") >= 0
       if (isMusic && p.isPlaying && !musicPlaying) musicPlaying = p
       if (isMusic && !music) music = p
-      if (p.isPlaying && !playing) playing = p
-      if (!any && p.trackTitle) any = p
     }
-    return musicPlaying || music || playing || any
+    // Only ever a YouTube Music player: Chromium/Chrome has one media session,
+    // and while a youtube.com video plays it IS that video, so falling back to
+    // "whatever is playing" made pause/play hit the video instead of the music.
+    return musicPlaying || music
   }
   // ---- What the widget shows/controls. With the bridge connected it comes
   // straight from the YouTube Music page, so a YouTube video (which takes over
