@@ -196,6 +196,8 @@
       canEnqueue: document.documentElement.getAttribute("data-ytp-store") === "yes",
       // YouTube Music's own volume 0-100 (from page.js); -1 if unknown.
       volume: Number(document.documentElement.getAttribute("data-ytp-volume") || -1),
+      // Song transitions (transitions.js): "mode:what it last did", for debugging.
+      transition: document.documentElement.getAttribute("data-ytp-xf") || "",
       queue
     }
   }
@@ -349,6 +351,11 @@
       setTimeout(report, 200)
       return
     }
+    if (msg.cmd === "transition") {
+      document.dispatchEvent(new CustomEvent("ytp-bridge-transition",
+        { detail: JSON.stringify({ mode: msg.mode, out: msg.out, in: msg.in }) }))
+      return
+    }
     if (msg.cmd === "volume") {
       document.dispatchEvent(new CustomEvent("ytp-bridge-volume", { detail: JSON.stringify({ to: msg.to }) }))
       setTimeout(report, 30)
@@ -421,6 +428,9 @@
     }
     setTimeout(report, 300)
   })
+
+  // Ask for the song transition settings (host.py reads them from settings.json).
+  try { chrome.runtime.sendMessage({ type: "want-config" }) } catch (e) {}
 
   // After a self-reload this script is injected again; stop the old copy's timer.
   if (window.__ytpBridgeTimer) clearInterval(window.__ytpBridgeTimer)

@@ -37,8 +37,14 @@ shuffle and repeat, plus tabs for your **queue**, **search**, **library**,
   and (optionally) whenever the song changes.
 - **Sleep timer**, a thin **progress ring** around the bar icon, and **"Up next"**
   in the bar icon's tooltip.
+- **Song transitions** — off, a smooth fade (the song fades out, the next one
+  fades in) or a **crossfade** (the next song starts while this one fades
+  out), with separate fade-out / fade-in lengths. (With crossfade the next song
+  briefly plays in a hidden YouTube player, so it may appear twice in your
+  YouTube watch history.)
 - **Audio focus** — when a YouTube video or another app starts playing,
-  YouTube Music pauses (can be turned off).
+  YouTube Music pauses (can be turned off). Hover previews on YouTube's
+  thumbnails don't count, only a video you open.
 - **Equalizer** (optional) — bass / mid / treble for the music, using
   PipeWire's built-in equalizer (no extra software).
 
@@ -70,6 +76,11 @@ then, once:
    click **Load unpacked** and choose
    `~/.config/omarchy/plugins/dqckey.ytmusic-player/bridge/extension`.
 2. Reload your YouTube Music tab / window.
+
+**Updating:** after `omarchy plugin update`, open `chrome://extensions` and
+click the reload icon on the bridge extension (or run
+`~/.config/omarchy/plugins/dqckey.ytmusic-player/bin/ytmusic-cmd reload`), so
+the browser picks up the new scripts.
 
 `setup.sh` registers a small helper (a Chrome "native messaging host") so the
 extension can talk to the bar, prints the steps above, and suggests keyboard
@@ -106,6 +117,7 @@ o.bind("XF86AudioPrev", "Previous song", "omarchy-shell -q ytmusic-player-media 
 
 The gear in the player's top-right corner: pause music when other audio
 starts, how long the song card stays and fades, equalizer, sleep timer,
+song transitions (off / smooth fade / crossfade, fade-out and fade-in length),
 song-change card, progress ring, and which
 sections an artist page shows. Settings live in
 `~/.config/ytmusic-player/settings.json`; pins and hidden items next to it.
@@ -115,7 +127,7 @@ sections an artist page shows. Settings live in
 | Piece | What it does |
 | --- | --- |
 | `Widget.qml` | The bar widget and player (Quickshell / QML). |
-| `bridge/extension/` | Chromium extension. `content.js` / `page.js` run only on `music.youtube.com`: they report the song, queue, like / shuffle / repeat state, and carry out the player's commands (clicking YouTube Music's own buttons or using its own internal requests). `other.js` runs on `youtube.com` only to notice a video starting (for audio focus) and reads nothing else. |
+| `bridge/extension/` | Chromium extension. `content.js` / `page.js` run only on `music.youtube.com`: they report the song, queue, like / shuffle / repeat state, and carry out the player's commands (clicking YouTube Music's own buttons or using its own internal requests). `transitions.js` does the song transitions: fades go through a Web Audio gain on YouTube Music's own player (its volume setting is never changed); for a crossfade the next song starts in a hidden YouTube player, and YouTube Music's player takes over at the same spot when it gets there (anything unexpected falls back to a plain fade). `other.js` runs on `youtube.com` only to notice a video starting (for audio focus) and reads nothing else. |
 | `bridge/host.py` | The helper the browser starts for this extension only. It writes the page's state to `~/.local/state/ytmusic-player/` and forwards an allowlisted set of commands from the bar. It never runs anything it receives. |
 | `bin/ytmusic-cmd` | Sends a command to the bridge (`ytmusic-cmd --help`). The widget keeps one `ytmusic-cmd --stdin` running and writes commands to it, so search text and song titles never show up in process lists. |
 | `bin/ytmusic-key` | Fallback: sends YouTube Music's keyboard shortcuts to its window when the bridge isn't loaded. |

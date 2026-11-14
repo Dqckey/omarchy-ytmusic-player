@@ -17,6 +17,13 @@ function connect() {
       chrome.runtime.reload()
       return
     }
+    // Song transition settings go to every YouTube Music tab.
+    if (msg && msg.cmd === "transition") {
+      chrome.tabs.query({ url: "https://music.youtube.com/*" }).then((tabs) => {
+        for (const tab of tabs) chrome.tabs.sendMessage(tab.id, msg).catch(() => {})
+      })
+      return
+    }
     if (musicTab !== null) chrome.tabs.sendMessage(musicTab, msg).catch(() => {})
   })
   port.onDisconnect.addListener(() => { port = null })
@@ -31,15 +38,21 @@ async function pauseOthers(tabId) {
   }
 }
 
-// Put the current scripts into YouTube Music tabs that are already open
+// Put the current scripts into YouTube Music / YouTube tabs that are already open
 // (Chromium only injects declared content scripts on page load).
 async function injectOpenTabs() {
   const tabs = await chrome.tabs.query({ url: "https://music.youtube.com/*" })
   for (const tab of tabs) {
     try {
-      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["page.js"], world: "MAIN" })
+      await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["page.js", "transitions.js"], world: "MAIN" })
       await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["content.js"] })
     } catch (e) {}
+  }
+  // And the "a YouTube video started" script into open YouTube tabs: after a
+  // reload their old copy can no longer reach the extension.
+  const yt = await chrome.tabs.query({ url: "https://www.youtube.com/*" })
+  for (const tab of yt) {
+    try { await chrome.scripting.executeScript({ target: { tabId: tab.id }, files: ["other.js"] }) } catch (e) {}
   }
 }
 
@@ -50,6 +63,11 @@ chrome.runtime.onMessage.addListener((msg, sender) => {
     // A YouTube video (not YouTube Music) started; the bar decides whether
     // to pause the music.
     try { connect().postMessage({ type: "other" }) } catch (e) { port = null }
+    return
+  }
+  if (msg.type === "want-config") {
+    // A YouTube Music page (re)loaded: the host sends the transition settings.
+    try { connect().postMessage({ type: "want-config" }) } catch (e) { port = null }
     return
   }
   if (msg.type === "playing") {

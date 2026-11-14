@@ -15,6 +15,10 @@ move {index, to}, resume, pause, toggle, next, previous, seek {to seconds},
 search {q}, library, pick {list, index, action: play|next|queue},
 pickid {playlistId | videoId, action, title}, inspect,
 reload (the extension restarts itself to pick up edited scripts).
+
+It also sends the song transition settings ("music.transition", "transitionOut",
+"transitionIn" in <config>/settings.json) to the extension: when a YouTube
+Music page asks for them and whenever the file changes.
 """
 import json
 import os
@@ -36,6 +40,7 @@ COMMANDS = {"like", "dislike", "shuffle", "play", "remove", "move", "inspect", "
             "resume", "pause", "toggle", "next", "previous", "seek", "volume",
             "search", "library", "pick", "pickid", "artist", "artistplay", "artistsongs",
             "artistsongsplay", "speeddial", "repeat", "radio", "lyrics", "saveto", "saveadd"}
+SETTINGS = os.path.join(CONFIG_DIR, "settings.json")
 MAX_MESSAGE = 1024 * 1024
 
 out_lock = threading.Lock()
@@ -155,6 +160,40 @@ def clean_command(raw):
     return out
 
 
+def transition_config():
+    """The song transition settings as a command for the page (always valid)."""
+    try:
+        with open(SETTINGS) as f:
+            music = (json.load(f) or {}).get("music") or {}
+    except (OSError, ValueError, AttributeError):
+        music = {}
+    if not isinstance(music, dict):
+        music = {}
+
+    def num(key, lo, hi, default):
+        v = music.get(key)
+        if isinstance(v, bool) or not isinstance(v, (int, float)):
+            return default
+        return float(min(hi, max(lo, v)))
+
+    mode = music.get("transition")
+    return {"cmd": "transition",
+            "mode": mode if mode in ("fade", "crossfade") else "off",
+            "out": num("transitionOut", 0.5, 12, 5.0),
+            "in": num("transitionIn", 0, 12, 3.0)}
+
+
+def watch_settings():
+    """Send the transition settings again whenever they change."""
+    last = transition_config()
+    while True:
+        time.sleep(1)
+        cfg = transition_config()
+        if cfg != last:
+            last = cfg
+            send(cfg)
+
+
 def log_command(cmd):
     """Keep the last 50 forwarded commands (time + command) for debugging.
     Search text and titles are left out (only their length is kept)."""
@@ -207,6 +246,7 @@ def make_private():
 def main():
     make_private()
     threading.Thread(target=read_commands, daemon=True).start()
+    threading.Thread(target=watch_settings, daemon=True).start()
     stdin = sys.stdin.buffer
     while True:
         header = stdin.read(4)
@@ -231,6 +271,8 @@ def main():
             data = msg["data"]
             data["ts"] = time.time()
             write_json(RESULTS, data)
+        elif msg.get("type") == "want-config":
+            send(transition_config())
         elif msg.get("type") == "other":
             write_json(OTHER, {"ts": time.time()})
     try:

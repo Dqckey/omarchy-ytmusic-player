@@ -292,6 +292,11 @@ Panel {
   // (settings.json music.cardStay / music.cardFade, in seconds).
   readonly property real cardStaySeconds: prefs.music && prefs.music.cardStay > 0 ? Math.min(6, prefs.music.cardStay) : 1.8
   readonly property real cardFadeSeconds: prefs.music && prefs.music.cardFade > 0 ? Math.min(2, prefs.music.cardFade) : 0.46
+  // Song transitions: the YT Music bridge (bridge/host.py → bridge/extension/transitions.js) reads these keys
+  // from settings.json and does the fading.
+  readonly property string transitionMode: prefs.music && (prefs.music.transition === "fade" || prefs.music.transition === "crossfade") ? prefs.music.transition : "off"
+  readonly property real transitionOutSeconds: prefs.music && prefs.music.transitionOut >= 0.5 ? Math.min(12, prefs.music.transitionOut) : 5
+  readonly property real transitionInSeconds: prefs.music && typeof prefs.music.transitionIn === "number" && prefs.music.transitionIn >= 0 ? Math.min(12, prefs.music.transitionIn) : 3
   property string trackCardAction: ""
   function mediaKey(action) {
     if (action === "toggle") root.togglePlay()
@@ -1608,6 +1613,111 @@ Panel {
 
           Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
 
+          // Song transitions: how one song hands over to the next.
+          Text {
+            width: parent.width
+            text: "Song transitions"
+            color: root.fg
+            font.family: root.font
+            font.pixelSize: Style.font.bodySmall
+          }
+          Flow {
+            width: parent.width
+            spacing: Style.space(6)
+            Repeater {
+              model: [
+                { label: "Off", mode: "off" }, { label: "Smooth fade", mode: "fade" }, { label: "Crossfade", mode: "crossfade" }
+              ]
+              Rectangle {
+                required property var modelData
+                readonly property bool on: modelData.mode === root.transitionMode
+                width: transLabelText.implicitWidth + Style.space(16)
+                height: transLabelText.implicitHeight + Style.space(8)
+                radius: height / 2
+                color: on ? root.fg : Qt.rgba(root.fg.r, root.fg.g, root.fg.b, transMouse.containsMouse ? 0.16 : 0.08)
+                Text {
+                  id: transLabelText
+                  anchors.centerIn: parent
+                  text: modelData.label
+                  color: parent.on ? Color.menu.background : root.fg
+                  font.family: root.font
+                  font.pixelSize: Style.font.caption
+                }
+                MouseArea {
+                  id: transMouse
+                  anchors.fill: parent
+                  hoverEnabled: true
+                  cursorShape: Qt.PointingHandCursor
+                  onClicked: root.setMusicPref("transition", modelData.mode)
+                }
+              }
+            }
+          }
+          Column {
+            width: parent.width
+            spacing: Style.space(6)
+            visible: root.transitionMode !== "off"
+            Text {
+              width: parent.width
+              wrapMode: Text.Wrap
+              text: root.transitionMode === "crossfade" ? "The next song starts while this one fades out, so they overlap." : "This song fades out, then the next one fades in."
+              color: root.fg
+              opacity: 0.7
+              font.family: root.font
+              font.pixelSize: Style.font.caption
+            }
+            Repeater {
+              model: [
+                { key: "transitionOut", label: "Fade out", min: 0.5, max: 12, value: root.transitionOutSeconds },
+                { key: "transitionIn", label: "Fade in", min: 0, max: 12, value: root.transitionInSeconds }
+              ]
+              Item {
+                required property var modelData
+                width: settingsCardColumn.width
+                height: Style.space(22)
+                Text {
+                  id: transTimeLabel
+                  anchors.left: parent.left
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(64)
+                  text: modelData.label
+                  color: root.fg
+                  opacity: 0.7
+                  font.family: root.font
+                  font.pixelSize: Style.font.caption
+                }
+                PanelSlider {
+                  id: transTimeSlider
+                  bar: root.bar
+                  anchors.left: transTimeLabel.right
+                  anchors.right: transTimeValue.left
+                  anchors.rightMargin: Style.space(8)
+                  anchors.verticalCenter: parent.verticalCenter
+                  height: Style.space(18)
+                  minimum: modelData.min
+                  maximum: modelData.max
+                  step: 0.5
+                  value: modelData.value
+                  onReleased: function(v) { root.setMusicPref(modelData.key, Math.round(v * 2) / 2) }
+                }
+                Text {
+                  id: transTimeValue
+                  anchors.right: parent.right
+                  anchors.verticalCenter: parent.verticalCenter
+                  width: Style.space(44)
+                  horizontalAlignment: Text.AlignRight
+                  text: (transTimeSlider.dragging ? transTimeSlider.liveValue : modelData.value).toFixed(1) + " s"
+                  color: root.fg
+                  opacity: 0.6
+                  font.family: root.font
+                  font.pixelSize: Style.font.caption
+                }
+              }
+            }
+          }
+
+          Rectangle { width: parent.width; height: 1; color: root.fg; opacity: 0.12 }
+
           // Song-change card (off by default), its timing, and the bar icon's progress ring.
           Repeater {
             model: [{ key: "notifySongChange", label: "Show the song card (play / pause, skip and song changes)", on: root.notifySongs }]
@@ -2521,7 +2631,7 @@ Panel {
           Text {
             width: parent.width
             text: !root.bridgeOn
-              ? "The queue needs the YT Music bar bridge. Run " + root.pluginDir + "/setup.sh once, then in Chromium open chrome://extensions, turn on Developer mode, click \"Load unpacked\" and pick " + root.pluginDir + "/bridge/extension. Then reload YouTube Music."
+              ? "The queue needs the YT Music bar bridge. Run " + root.pluginDir + "/setup.sh once, then in Chrome or Chromium open chrome://extensions, turn on Developer mode, click \"Load unpacked\" and pick " + root.pluginDir + "/bridge/extension. Then reload YouTube Music."
               : root.queue.length === 0
                 ? "Queue is empty (open the player in YouTube Music once if this stays empty)."
                 : "Up next · click to play · drag ⋮⋮ to reorder · swipe left (all the way) or right-click to remove"
