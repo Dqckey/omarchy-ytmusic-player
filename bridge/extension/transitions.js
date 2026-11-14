@@ -24,7 +24,9 @@
   if (window.__ytpXfTimer) clearInterval(window.__ytpXfTimer)
   if (window.__ytpXfCfgHandler) document.removeEventListener("ytp-bridge-transition", window.__ytpXfCfgHandler, true)
   if (window.__ytpXfMsgHandler) window.removeEventListener("message", window.__ytpXfMsgHandler)
-  document.querySelectorAll("iframe[data-ytp-xf]").forEach((f) => f.remove())
+  // A reload mid-crossfade: let the old copy put the hidden player's volume back first.
+  if (window.__ytpXfDrop) { try { window.__ytpXfDrop() } catch (e) {} }
+  if (!window.__ytpXfDrop) document.querySelectorAll("iframe[data-ytp-xf]").forEach((f) => f.remove())
 
   let cfg = window.__ytpXfCfg || { mode: "off", out: 5, in: 3 }
 
@@ -190,6 +192,7 @@
     if (xf.savedMuted !== null) post(xf, xf.savedMuted ? "mute" : "unMute")
     setTimeout(() => xf.frame.remove(), 400)
   }
+  window.__ytpXfDrop = dropXf
 
   window.__ytpXfMsgHandler = (e) => {
     const xf = T.xf
@@ -199,6 +202,7 @@
     if (!d || typeof d !== "object") return
     if (d.event === "onReady" || d.event === "initialDelivery") xf.ready = true
     if (d.event === "onError") { xf.failed = true; publish("embed-error " + d.info) }
+    if (d.event === "onStateChange" && typeof d.info === "number") { xf.state = d.info; if (d.info === 1) xf.tAt = performance.now() }
     const info = d.info
     if ((d.event === "infoDelivery" || d.event === "initialDelivery") && info && typeof info === "object") {
       xf.ready = true

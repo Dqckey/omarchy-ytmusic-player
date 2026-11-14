@@ -187,11 +187,14 @@ def watch_settings():
     """Send the transition settings again whenever they change."""
     last = transition_config()
     while True:
-        time.sleep(1)
-        cfg = transition_config()
-        if cfg != last:
-            last = cfg
-            send(cfg)
+        try:
+            time.sleep(1)
+            cfg = transition_config()
+            if cfg != last:
+                last = cfg
+                send(cfg)
+        except (OSError, ValueError):
+            return
 
 
 def log_command(cmd):
