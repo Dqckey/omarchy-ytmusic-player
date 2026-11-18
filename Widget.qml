@@ -2242,21 +2242,92 @@ Panel {
               font.family: root.font
               font.pixelSize: Style.font.body
             }
-            TextInput {
+            // Not a native TextInput on purpose: a writable TextInput asks the
+            // Wayland clipboard for its text on every clipboard change (to
+            // update "can paste"), and Qt reads that with no size limit, so a
+            // hostile clipboard owner could stall or exhaust the shared shell.
+            // This field takes typed keys itself and only touches the
+            // clipboard when you paste (Ctrl+V / Shift+Insert), through
+            // wl-paste with a time and size cap (searchPaste below).
+            Item {
               id: searchInput
+              property string text: ""
+              readonly property int maxLength: 200
+              property alias font: searchText.font
               anchors.left: searchGlyph.right
               anchors.leftMargin: Style.space(8)
               anchors.right: parent.right
               anchors.rightMargin: Style.space(10)
               anchors.verticalCenter: parent.verticalCenter
-              color: root.fg
-              font.family: root.font
-              font.pixelSize: Style.font.bodySmall
+              height: searchText.implicitHeight
               clip: true
-              selectByMouse: true
-              onAccepted: { liveSearch.stop(); root.runSearch(text) }
+              activeFocusOnTab: true
               onTextChanged: liveSearch.restart()
-              Keys.onEscapePressed: { if (text !== "") text = ""; else root.bottomView = "" }
+
+              function insert(s) {
+                // One line, printable characters only.
+                s = String(s).replace(/[\u0000-\u001f\u007f]+/g, " ")
+                var t = (searchInput.text + s).slice(0, searchInput.maxLength)
+                if (t !== searchInput.text) searchInput.text = t
+              }
+
+              Keys.onPressed: function(event) {
+                var ctrl = event.modifiers & Qt.ControlModifier
+                if (event.key === Qt.Key_Return || event.key === Qt.Key_Enter) {
+                  liveSearch.stop(); root.runSearch(searchInput.text)
+                } else if (event.key === Qt.Key_Escape) {
+                  if (searchInput.text !== "") searchInput.text = ""; else root.bottomView = ""
+                } else if (event.key === Qt.Key_Backspace) {
+                  searchInput.text = ctrl ? searchInput.text.replace(/\S*\s*$/, "")
+                                          : searchInput.text.slice(0, -1)
+                } else if ((ctrl && event.key === Qt.Key_V)
+                           || ((event.modifiers & Qt.ShiftModifier) && event.key === Qt.Key_Insert)) {
+                  searchPaste.running = true
+                } else if (ctrl && (event.key === Qt.Key_U || event.key === Qt.Key_A)) {
+                  searchInput.text = ""
+                } else if (!ctrl && !(event.modifiers & Qt.AltModifier) && event.text !== ""
+                           && event.text.charCodeAt(0) >= 32 && event.text.charCodeAt(0) !== 127) {
+                  searchInput.insert(event.text)
+                } else {
+                  return
+                }
+                event.accepted = true
+              }
+
+              MouseArea {
+                anchors.fill: parent
+                cursorShape: Qt.IBeamCursor
+                onClicked: searchInput.forceActiveFocus()
+              }
+
+              Text {
+                id: searchText
+                // Keep the end (where you type) in view when the text is long.
+                x: Math.min(0, parent.width - implicitWidth - searchCaret.width)
+                anchors.verticalCenter: parent.verticalCenter
+                text: searchInput.text
+                color: root.fg
+                font.family: root.font
+                font.pixelSize: Style.font.bodySmall
+              }
+              Rectangle {
+                id: searchCaret
+                x: searchText.x + searchText.contentWidth + 1
+                anchors.verticalCenter: parent.verticalCenter
+                width: 1
+                height: searchText.font.pixelSize * 1.2
+                color: root.fg
+                visible: searchInput.activeFocus && caretBlink.on
+                Timer {
+                  id: caretBlink
+                  property bool on: true
+                  interval: 530
+                  repeat: true
+                  running: searchInput.activeFocus
+                  onRunningChanged: on = true
+                  onTriggered: on = !on
+                }
+              }
               Text {
                 anchors.fill: parent
                 verticalAlignment: Text.AlignVCenter
@@ -2265,6 +2336,16 @@ Panel {
                 color: root.fg
                 opacity: 0.4
                 font: searchInput.font
+              }
+
+              // Paste: at most 1 KB, gives up after 1 second.
+              Process {
+                id: searchPaste
+                command: ["sh", "-c", "timeout 1 wl-paste --no-newline --type text/plain 2>/dev/null | head -c 1024"]
+                stdout: StdioCollector {
+                  id: searchPasteOut
+                  onStreamFinished: searchInput.insert(searchPasteOut.text)
+                }
               }
             }
           }
